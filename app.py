@@ -84,63 +84,50 @@ sp = Spotify(client_credentials_manager=SpotifyClientCredentials(
     client_secret='0639372d03e44e098f7f8f1a4249bbd7'
 ))
 
-def get_spotify_tracks(vibe_label, language=None, limit=20):
+def get_spotify_playlists(vibe_label, language=None, limit=5):
     """
-    Search Spotify tracks by vibe_label and language.
-    - vibe_label: raw label (no emoji), e.g. "beach"
-    - language: "Hindi", "Bengali", "English" or None/"All"
-    - limit: number of tracks to request (max 50 typical)
-    Returns list of tracks: {name, artists, url, preview_url, image, album, track_id, source_query}
+    Search Spotify playlists by vibe_label and language.
+    - vibe_label: raw label (no emoji), e.g. "beach" or "heritage"
+    - language: one of "Hindi", "Bengali", "English" or None for no specific language
+    Returns a list of playlist dicts: {name, url, image, source_query}
     """
-    tracks = []
+    playlists = []
+    # Build query components
+    # If a language is specified, include it; else just use vibe_label
     query_pieces = []
     if vibe_label:
         query_pieces.append(vibe_label)
-    if language and language.lower() not in ["all", "none"]:
-        # include language term to bias search
+    if language and language.lower() != "all":
         query_pieces.append(language)
-    # add generic music/track terms to guide search
-    query_pieces.append("song")
+    query_pieces.append("music")
     query = " ".join(query_pieces).strip()
 
     try:
-        results = sp.search(q=query, type="track", limit=limit)
-        items = results.get('tracks', {}).get('items', [])
+        # Spotify search: type playlist
+        results = sp.search(q=query, type="playlist", limit=limit)
+        items = results.get('playlists', {}).get('items', [])
 
-        seen_ids = set()  # dedupe
-        for t in items:
-            if not t:
+        for playlist in items:
+            if not playlist:
                 continue
-            tid = t.get('id')
-            if not tid or tid in seen_ids:
-                continue
-            seen_ids.add(tid)
 
-            name = t.get('name', 'Unknown Title')
-            artists = ", ".join([a.get('name') for a in t.get('artists', []) if a.get('name')])
-            url = t.get('external_urls', {}).get('spotify', '')
-            preview = t.get('preview_url')  # may be None
-            album = t.get('album', {}).get('name', '')
+            name = playlist.get('name', 'No Name')
+            url = playlist.get('external_urls', {}).get('spotify', '')
             image = None
-            images = t.get('album', {}).get('images') or []
-            if images:
-                image = images[0]['url']  # largest available first
+            if playlist.get('images') and len(playlist['images']) > 0:
+                image = playlist['images'][0]['url']
 
-            tracks.append({
-                "track_id": tid,
-                "name": name,
-                "artists": artists,
-                "album": album,
-                "url": url,
-                "preview_url": preview,
-                "image": image,
-                "source_query": query
+            playlists.append({
+                'name': name,
+                'url': url,
+                'image': image,
+                'source_query': query
             })
 
     except Exception as e:
         st.error(f"❌ Spotify API error for query '{query}': {e}")
 
-    return tracks
+    return playlists
 
 # -------------------------------
 # IP LOCATION
@@ -171,7 +158,7 @@ def login(username, password):
 # STREAMLIT UI
 # -------------------------------
 def main():
-    st.title("🎶 Personalized Music Recommendation System — Songs by Vibe + Language")
+    st.title("🎶 Personalized Music Recommendation System")
 
     if 'logged_in' not in st.session_state:
         st.session_state.logged_in = False
@@ -194,10 +181,10 @@ def main():
         return  # stop further UI rendering until logged in
 
     # Logged in UI
-    menu = st.sidebar.radio("Navigation", ["Home", "Location", "Songs", "Logout"])
+    menu = st.sidebar.radio("Navigation", ["Home", "Location", "Playlist", "Logout"])
 
     if menu == "Home":
-        st.write("Welcome! Use the sidebar to detect location and generate songs by vibe & language.")
+        st.write("Welcome! Use the sidebar to detect location and generate playlists.")
 
     elif menu == "Location":
         st.subheader("🌍 Detecting location...")
@@ -230,7 +217,7 @@ def main():
                 else:
                     st.warning("Please enter both latitude and longitude.")
 
-    elif menu == "Songs":
+    elif menu == "Playlist":
         vibe = st.session_state.predicted_vibe
 
         if not vibe:
@@ -241,61 +228,38 @@ def main():
             # Language selection: Hindi / Bengali / English / All
             lang_choice = st.radio("Choose language filter:", ["All", "Hindi", "Bengali", "English"])
 
-            # Number of tracks to fetch per language (if All chosen, we'll fetch per language and combine)
-            per_lang = st.slider("Tracks per language (or total if single language chosen)", min_value=5, max_value=50, value=20)
+            # Number of playlists per language (if All chosen, we'll fetch for each and aggregate)
+            per_lang = st.slider("Playlists per language", min_value=3, max_value=12, value=5)
 
-            if st.button("Generate Songs"):
-                all_tracks = []
+            if st.button("Generate Playlist"):
+                all_playlists = []
 
                 if lang_choice == "All":
-                    # For All, fetch per language and combine with dedupe
                     for lang in ["Hindi", "Bengali", "English"]:
-                        tlist = get_spotify_tracks(vibe_label=vibe['label'], language=lang, limit=per_lang)
-                        for t in tlist:
-                            t['language'] = lang
-                        all_tracks.extend(tlist)
+                        pl = get_spotify_playlists(vibe_label=vibe['label'], language=lang, limit=per_lang)
+                        # tag with language
+                        for item in pl:
+                            item['language'] = lang
+                        all_playlists.extend(pl)
                 else:
-                    tlist = get_spotify_tracks(vibe_label=vibe['label'], language=lang_choice, limit=per_lang)
-                    for t in tlist:
-                        t['language'] = lang_choice
-                    all_tracks = tlist
+                    pl = get_spotify_playlists(vibe_label=vibe['label'], language=lang_choice, limit=per_lang)
+                    for item in pl:
+                        item['language'] = lang_choice
+                    all_playlists = pl
 
-                if not all_tracks:
-                    st.warning("No songs found for that combination. Try increasing the number of tracks or try a different language.")
+                if not all_playlists:
+                    st.warning("No playlists found for that combination. Try increasing the number of playlists or try a different language.")
                 else:
-                    # Deduplicate by track_id while preserving language tag (first occurrence kept)
-                    dedup = {}
-                    for t in all_tracks:
-                        if t['track_id'] not in dedup:
-                            dedup[t['track_id']] = t
-                    final_tracks = list(dedup.values())
-
-                    # Optionally sort/group by language
-                    df = pd.DataFrame(final_tracks)
-                    if 'language' in df.columns:
-                        for lang in df['language'].unique():
-                            st.markdown(f"### {lang} songs")
-                            subset = df[df['language'] == lang]
-                            for _, row in subset.iterrows():
-                                st.write(f"{row['name']}** — {row['artists']} — {row['album']}")
-                                if row.get('image'):
-                                    st.image(row['image'], width=260)
-                                if row.get('preview_url'):
-                                    st.audio(row['preview_url'])
-                                else:
-                                    st.write(f"[Open in Spotify]({row['url']})")
-                                st.caption(f"search query: {row.get('source_query','')}")
-                    else:
-                        # fallback: list all
-                        for row in final_tracks:
-                            st.write(f"{row['name']}** — {row['artists']} — {row['album']}")
+                    # Show results grouped by language for clarity
+                    df = pd.DataFrame(all_playlists)
+                    # group
+                    for lang in df['language'].unique():
+                        st.markdown(f"### {lang} playlists")
+                        subset = df[df['language'] == lang]
+                        for _, row in subset.iterrows():
+                            st.write(f"🔗 [{row['name']}]({row['url']}) — (query: {row.get('source_query','')})")
                             if row.get('image'):
-                                st.image(row['image'], width=260)
-                            if row.get('preview_url'):
-                                st.audio(row['preview_url'])
-                            else:
-                                st.write(f"[Open in Spotify]({row['url']})")
-                            st.caption(f"search query: {row.get('source_query','')}")
+                                st.image(row['image'], width=280)
 
     elif menu == "Logout":
         st.session_state.logged_in = False
@@ -303,5 +267,5 @@ def main():
         st.success("Logged out!")
         st.rerun()
 
-if _name_ == "_main_":
+if __name__ == "__main__":
     main()
