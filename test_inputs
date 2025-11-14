@@ -1,0 +1,44 @@
+GEOTUNES MODEL INPUT FOR TESTING
+
+
+🌴 Beach examples
+
+# Digha, West Bengal
+lat, lon = 21.6266, 87.5074
+
+# Goa
+# lat, lon = 15.2993, 74.1240
+
+
+# 🌆 City examples
+
+# Mumbai
+# lat, lon = 19.0760, 72.8777
+
+# Asansol, West Bengal
+# lat, lon = 23.6739, 86.9524
+
+
+🏔 Mountain examples
+
+# Darjeeling, West Bengal
+# lat, lon = 27.0360, 88.2627
+
+# Kalimpong
+# lat, lon = 27.0700, 88.4700
+
+
+🏜 Desert examples
+
+
+# Bikaner, Rajasthan
+# lat, lon = 28.0229, 73.3119
+
+
+Heritage
+
+
+# Jaisalmer, Rajasthan
+# lat, lon = 26.9157, 70.9083
+
+
