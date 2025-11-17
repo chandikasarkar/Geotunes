@@ -1,2 +1,6 @@
 streamlit
+pandas
+numpy
 spotipy
+scikit-learn
+requests
