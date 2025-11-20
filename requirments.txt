@@ -1,6 +1,8 @@
 streamlit
-pandas
-numpy
-spotipy
-scikit-learn
 requests
+spotipy
+numpy
+pandas
+scikit-learn
+joblib
+pickle-mixin
