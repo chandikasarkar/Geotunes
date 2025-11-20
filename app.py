@@ -425,8 +425,8 @@ def main():
             "Use the sidebar to detect your location and generate personalized playlists."
         )
         st.image(
-            "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f"
-            "?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
+            'audio.jpg',
+            #"?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
             caption="Explore the world through music!",
             use_container_width=True,
         )
