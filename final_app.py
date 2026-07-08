@@ -1050,7 +1050,7 @@ def main():
                 """
                 <div class="home-container">
 
-                <h2>Welcome to Your Music Journey!</h2>
+                <h2>Welcome to GEOTUNES!</h2>
 
                 <p>
                 Discover music that matches your vibe based on your location.
